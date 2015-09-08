@@ -83,6 +83,7 @@ static inline int gralloc_drm_get_bpp(int format)
         case HAL_PIXEL_FORMAT_DRM_NV12:
 	case HAL_PIXEL_FORMAT_YCbCr_422_SP:
 	case HAL_PIXEL_FORMAT_YCrCb_420_SP:
+	case HAL_PIXEL_FORMAT_YCbCr_420_888:
 		bpp = 1;
 		break;
 	default:
@@ -109,6 +110,7 @@ static inline void gralloc_drm_align_geometry(int format, int *width, int *heigh
 		extra_height_div = 1;
 		break;
 	case HAL_PIXEL_FORMAT_YCrCb_420_SP:
+	case HAL_PIXEL_FORMAT_YCbCr_420_888:
 		align_w = 2;
 		align_h = 2;
 		extra_height_div = 2;
