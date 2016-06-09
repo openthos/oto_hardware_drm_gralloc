@@ -400,8 +400,10 @@ int gralloc_drm_bo_lock(struct gralloc_drm_bo_t *bo,
 
 		if (!(bo->handle->usage & GRALLOC_USAGE_SW_READ_OFTEN) &&
 				!(bo->handle->usage & GRALLOC_USAGE_HW_FB) &&
-				!(bo->handle->usage & GRALLOC_USAGE_HW_TEXTURE)) {
+				!(bo->handle->usage & GRALLOC_USAGE_HW_TEXTURE) &&
+				!(bo->handle->usage & GRALLOC_USAGE_HW_VIDEO_ENCODER)) {
 			ALOGE("bo.usage:x%X/usage:x%X is not GRALLOC_USAGE_HW_FB or GRALLOC_USAGE_HW_TEXTURE"
+			      "or GRALLOC_USAGE_HW_VIDEO_ENCODER"
 				,bo->handle->usage,usage);
 			return -EINVAL;
 		}
