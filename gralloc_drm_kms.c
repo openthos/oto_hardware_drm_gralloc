@@ -23,6 +23,13 @@
 
 #define LOG_TAG "GRALLOC-KMS"
 
+#include <stdbool.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+
 #include <cutils/properties.h>
 #include <cutils/log.h>
 #include <errno.h>
@@ -37,6 +44,8 @@
 #include <hardware_legacy/uevent.h>
 
 #include <drm_fourcc.h>
+
+#define HDMI_TMP_PATH  "/data/hdmi_display"
 
 /*
  * Return true if a bo needs fb.
@@ -994,6 +1003,82 @@ static void init_hdmi_output(struct gralloc_drm_t *drm,
 	drm->hdmi.active = 1;
 }
 
+static int gralloc_drm_hdmi_hotplug(struct gralloc_drm_t *drm)
+{
+	drmModeConnectorPtr h = fetch_connector(drm, DRM_MODE_CONNECTOR_HDMIA);
+
+	if (!h)
+		return -1;
+
+	ALOGI("init hdmi on hotplug event");
+	init_hdmi_output(drm, h);
+
+	/* will trigger modeset */
+	drm->first_post = 1;
+
+	drmModeFreeConnector(h);
+	return 0;
+}
+
+static void read_file(const char *filename, char *buf, int len)
+{
+	int file = open(filename, O_RDONLY);
+	read(file, buf, len);
+	close(file);
+}
+
+static inline char * my_strcpy(char *dest, const char *src)
+{
+	while(*src && (*src != '\n'))
+		*dest++ = *src++;
+	return dest;
+}
+
+static bool is_connected(char *cmd)
+{
+#define HDMI_CONNECTED "connected\n"
+
+	char buf[0x10] = {0};
+
+	if (system(cmd))
+		return false;
+	read_file(HDMI_TMP_PATH, buf, sizeof(buf) - 1);
+	return !strncmp(buf, HDMI_CONNECTED, sizeof(HDMI_CONNECTED));
+}
+
+static void *hdmi_observer_simple(void *data)
+{
+#define HDMI_PATH_LEN  0x200
+
+	struct gralloc_drm_t *drm = (struct gralloc_drm_t *) data;
+	char filename[HDMI_PATH_LEN] = {0};
+	char cmd[2 * HDMI_PATH_LEN];
+	char *pos;
+
+	system("find /sys/devices -type f | grep drm | grep card | grep /status "
+		"| grep HDMI | head -n 1 > " HDMI_TMP_PATH);
+	read_file(HDMI_TMP_PATH, filename, sizeof(filename) - 1);
+	ALOGI("hdmi display file path: %s.", filename);
+	if (!filename[0])
+		return NULL;
+
+	pos = my_strcpy(cmd, "cat ");
+	pos = my_strcpy(pos, filename);
+	pos = my_strcpy(pos, " > ");
+	pos = my_strcpy(pos, HDMI_TMP_PATH);
+	*pos = '\0';
+	if (is_connected(cmd))
+		return NULL;
+
+	ALOGI("listening hdmi display command: %s.", cmd);
+	while(!is_connected(cmd))
+		sleep(1);
+
+	pthread_mutex_lock(&drm->hdmi_mutex);
+	gralloc_drm_hdmi_hotplug(drm);
+	pthread_mutex_unlock(&drm->hdmi_mutex);
+	return NULL;
+}
 
 /*
  * Thread that listens to uevents and checks if hdmi state changes
@@ -1030,19 +1115,8 @@ static void *hdmi_observer(void *data)
 					pthread_mutex_lock(&drm->hdmi_mutex);
 
 					if (value) {
-						hdmi = fetch_connector(drm, DRM_MODE_CONNECTOR_HDMIA);
-						if (hdmi) {
-
-							ALOGD("init hdmi on hotplug event");
-							init_hdmi_output(drm, hdmi);
-
-							/* will trigger modeset */
-							drm->first_post = 1;
-
-							drmModeFreeConnector(hdmi);
-
-							pthread_mutex_unlock(&drm->hdmi_mutex);
-						}
+						gralloc_drm_hdmi_hotplug(drm);
+						pthread_mutex_unlock(&drm->hdmi_mutex);
 						break;
 					} else {
 						drm->hdmi.active = 0;
@@ -1069,7 +1143,6 @@ static void *hdmi_observer(void *data)
 	pthread_exit(NULL);
 	return 0;
 }
-
 
 /*
  * Initialize KMS.
@@ -1165,10 +1238,9 @@ int gralloc_drm_init_kms(struct gralloc_drm_t *drm)
 		drmModeFreeConnector(hdmi);
 	}
 
-goto skip_hdmi_modes;
 	/* launch hdmi observer thread */
 	pthread_mutex_init(&drm->hdmi_mutex, NULL);
-	pthread_create(&drm->hdmi_hotplug_thread, NULL, hdmi_observer, drm);
+	pthread_create(&drm->hdmi_hotplug_thread, NULL, hdmi_observer_simple, drm);
 
 skip_hdmi_modes:
 
