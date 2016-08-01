@@ -791,6 +791,7 @@ static drmModeModeInfoPtr find_mode(drmModeConnectorPtr connector, int *bpp)
 	int dist, i;
 	int xres = 0, yres = 0, rate = 0;
 	int forcemode = 0;
+	int max_xres = 0, index;
 
 	if (property_get("debug.drm.mode", value, NULL)) {
 		char *p = value, *end;
@@ -831,6 +832,16 @@ static drmModeModeInfoPtr find_mode(drmModeConnectorPtr connector, int *bpp)
 		mode = generate_mode(xres, yres, rate);
 	else {
 		mode = NULL;
+		/* choose the max resolution mode */
+		for (i = 0; i < connector->count_modes; i++) {
+			drmModeModeInfoPtr m = &connector->modes[i];
+			int tmp;
+			if(m->hdisplay > max_xres) {
+				index = i;
+				max_xres = m->hdisplay;
+			}
+		}
+		/* choose the preferred mode,(OTO multiwindow disable it) */
 		for (i = 0; i < connector->count_modes; i++) {
 			drmModeModeInfoPtr m = &connector->modes[i];
 			int tmp;
@@ -854,6 +865,9 @@ static drmModeModeInfoPtr find_mode(drmModeConnectorPtr connector, int *bpp)
 	}
 
 	/* fallback to the first mode */
+	if(max_xres > 0) {
+		mode = &connector->modes[index];
+	}
 	if (!mode)
 		mode = &connector->modes[0];
 
