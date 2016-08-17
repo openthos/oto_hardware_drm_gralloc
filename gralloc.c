@@ -295,6 +295,7 @@ static int drm_mod_open_fb0(struct drm_module_t *dmod, struct hw_device_t **dev)
 	fb->setSwapInterval = drm_mod_set_swap_interval_fb0;
 	fb->post = drm_mod_post_fb0;
 	fb->compositionComplete = drm_mod_composition_complete_fb0;
+	fb->setResolution = gralloc_drm_resize_resolution;
 
 	gralloc_drm_get_kms_info(dmod->drm, fb);
 
