@@ -144,7 +144,6 @@ int gralloc_drm_reserve_plane(struct gralloc_drm_t *drm,
 void gralloc_drm_disable_planes(struct gralloc_drm_t *mod);
 int gralloc_drm_set_plane_handle(struct gralloc_drm_t *drm,
 	uint32_t id, buffer_handle_t handle);
-int gralloc_drm_resize_resolution();
 
 #ifdef __cplusplus
 }

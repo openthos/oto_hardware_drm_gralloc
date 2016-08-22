@@ -44,11 +44,8 @@
 #include <hardware_legacy/uevent.h>
 
 #include <drm_fourcc.h>
+
 #define HDMI_TMP_PATH  "/data/hdmi_display"
-#define RESIZE_DEBUG 0
-#define DEFAULT_MAX_XRES 1920
-#define DEFAULT_REFRESH_RATE 60
-static int global_max_xres = DEFAULT_MAX_XRES;
 
 /*
  * Return true if a bo needs fb.
@@ -810,7 +807,7 @@ static drmModeModeInfoPtr find_mode(drmModeConnectorPtr connector, int *bpp)
 			ALOGI("will find the closest match for %dx%d@%d",
 					xres, yres, *bpp);
 		}
-	} else if (property_get("persist.sys.display.size", value, NULL)) {
+	} else if (property_get("debug.drm.mode.force", value, NULL)) {
 		char *p = value, *end;
 		*bpp = 0;
 
@@ -874,13 +871,6 @@ static drmModeModeInfoPtr find_mode(drmModeConnectorPtr connector, int *bpp)
 	if (!mode)
 		mode = &connector->modes[0];
 
-	/* provide the max resolution */
-	if (mode->hdisplay < global_max_xres) {
-		global_max_xres = mode->hdisplay;
-		memset(value, 0, PROPERTY_VALUE_MAX);
-		sprintf(value, "%dx%d", mode->hdisplay, mode->vdisplay);
-		property_set("persist.sys.max.display.size", value);
-	}
 	ALOGI("Established mode:");
 	ALOGI("clock: %d, hdisplay: %d, hsync_start: %d, hsync_end: %d, htotal: %d, hskew: %d", mode->clock, mode->hdisplay, mode->hsync_start, mode->hsync_end, mode->htotal, mode->hskew);
 	ALOGI("vdisplay: %d, vsync_start: %d, vsync_end: %d, vtotal: %d, vscan: %d, vrefresh: %d", mode->vdisplay, mode->vsync_start, mode->vsync_end, mode->vtotal, mode->vscan, mode->vrefresh);
@@ -1356,68 +1346,4 @@ void gralloc_drm_get_kms_info(struct gralloc_drm_t *drm,
 int gralloc_drm_is_kms_pipelined(struct gralloc_drm_t *drm)
 {
 	return (drm->swap_mode != DRM_SWAP_SETCRTC);
-}
-/*
- * reinit kms:mode and bo
- */
-static int gralloc_drm_reinit_kms(struct gralloc_drm_t *drm)
-{
-	int xres, yres, rate;
-	drmModeModeInfoPtr mode;
-	char value[PROPERTY_VALUE_MAX];
-	if (!drm->resources)
-		return -1;
-	if (!property_get("persist.sys.display.size", value, NULL))
-		return -1;
-	/* parse <xres>x<yres>[@<refreshrate>] */
-	if (sscanf(value, "%dx%d@%d", &xres, &yres, &rate) != 3) {
-		rate = DEFAULT_REFRESH_RATE;
-	}
-	if (xres && yres && rate) {
-		ALOGI("will use %dx%d@%dHz", xres, yres, rate);
-	}
-
-	mode = generate_mode(xres, yres, rate);
-	if (!mode)
-           return -1;
-	drm->primary.mode = *mode;
-#ifdef DRM_MODE_FEATURE_DIRTYFB
-	drm->clip.x1 = 0;
-	drm->clip.y1 = 0;
-	drm->clip.x2 = mode->hdisplay;
-	drm->clip.y2 = mode->vdisplay;
-#endif
-	drm->primary.active = 1;
-	drm->first_post = 1;
-	/* will create for hdmi display screen */
-	if(drm->hdmi.active) {
-		drm->hdmi.mode = *mode;
-		if(RESIZE_DEBUG)
-			ALOGE("resize HDMI buffer h:%d, v:%d,fb_format:%x", drm->hdmi.mode.hdisplay,
-							drm->hdmi.mode.vdisplay,drm->hdmi.fb_format);
-		gralloc_drm_bo_decref(drm->hdmi.bo);
-		drm->hdmi.bo = gralloc_drm_bo_create(drm,
-			drm->hdmi.mode.hdisplay, drm->hdmi.mode.vdisplay,
-			drm->hdmi.fb_format,
-			GRALLOC_USAGE_HW_RENDER);
-		int err = gralloc_drm_bo_add_fb(drm->hdmi.bo);
-		if (err) {
-			ALOGE("%s: could not create drm fb, (%s)",
-					__func__, strerror(-err));
-			return err;
-		}
-	}
-	return 0;
-}
-/*
- *resize resolution entry
- * */
-int gralloc_drm_resize_resolution()
-{
-	int err = 0;
-	if (drm_singleton != NULL) {
-		err = gralloc_drm_reinit_kms(drm_singleton);
-		ALOGE("%s:gralloc_drm_init_kms return:%d", __func__, err);
-	}
-	return err;
 }
