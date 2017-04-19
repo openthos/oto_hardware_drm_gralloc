@@ -83,7 +83,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := libgralloc_drm
 LOCAL_MODULE_TAGS := optional
 
-LOCAL_CFLAGS := -std=c99 -Wno-missing-field-initializers
+LOCAL_CFLAGS := -std=c99
 
 LOCAL_SRC_FILES := \
 	gralloc_drm.c \
@@ -146,7 +146,7 @@ LOCAL_STATIC_LIBRARIES += \
 	libmesa_gallium \
 	libmesa_util \
 
-LOCAL_SHARED_LIBRARIES += libdl libLLVM
+LOCAL_SHARED_LIBRARIES += libdl
 endif # DRM_USES_PIPE
 include $(BUILD_SHARED_LIBRARY)
 
