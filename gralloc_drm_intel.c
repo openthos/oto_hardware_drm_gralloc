@@ -604,6 +604,7 @@ static void intel_init_kms_features(struct gralloc_drm_drv_t *drv,
 	int pageflipping, id, has_blt;
 
 	switch (drm->primary->fb_format) {
+	case HAL_PIXEL_FORMAT_RGBA_8888:
 	case HAL_PIXEL_FORMAT_BGRA_8888:
 	case HAL_PIXEL_FORMAT_RGB_565:
 		break;

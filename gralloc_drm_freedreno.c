@@ -156,6 +156,7 @@ static void fd_init_kms_features(struct gralloc_drm_drv_t *drv,
 	struct fd_info *info = (struct fd_info *) drv;
 
 	switch (drm->primary->fb_format) {
+	case HAL_PIXEL_FORMAT_RGBA_8888:
 	case HAL_PIXEL_FORMAT_BGRA_8888:
 	case HAL_PIXEL_FORMAT_RGB_565:
 		break;
