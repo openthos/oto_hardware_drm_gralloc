@@ -960,6 +960,12 @@ static drmModeModeInfoPtr find_mode(drmModeConnectorPtr connector, int *bpp, drm
 	}
 
 	/* fallback to the first mode */
+
+	if (mode) {
+		sprintf(value, "%dx%d@%d", mode->hdisplay, mode->vdisplay, mode->vrefresh);
+		property_set("debug.drm.mode.force", value);
+	}
+
 	if (!mode)
 		mode = &connector->modes[0];
 
