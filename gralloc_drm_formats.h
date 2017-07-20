@@ -26,11 +26,6 @@
 extern "C" {
 #endif
 
-enum {
-
-	HAL_PIXEL_FORMAT_DRM_NV12 = 0x102,
-};
-
 #ifdef __cplusplus
 }
 #endif
