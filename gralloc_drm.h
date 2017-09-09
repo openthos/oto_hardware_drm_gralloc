@@ -31,7 +31,9 @@
 extern "C" {
 #endif
 
+#ifndef MAX
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#endif
 #define ALIGN(val, align) (((val) + (align) - 1) & ~((align) - 1))
 
 struct gralloc_drm_t;
