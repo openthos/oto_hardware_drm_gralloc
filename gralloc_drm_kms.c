@@ -1123,6 +1123,10 @@ static int init_external_output(struct gralloc_drm_t *drm,
 {
 	struct gralloc_drm_output *output;
 	output = drm_kms_init_with_new_connector(drm, connector);
+	if (output == NULL || !output->active) {
+		ALOGW("connector 0x%x output is null or not active", connector->connector_id);
+		return -EINVAL;
+	}
 
 	ALOGD("%s, allocate private buffer for hdmi [%dx%d]",
 		__func__, output->mode.hdisplay, output->mode.vdisplay);
