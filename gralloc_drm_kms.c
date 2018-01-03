@@ -1293,6 +1293,7 @@ int gralloc_drm_init_kms(struct gralloc_drm_t *drm)
 
 	/* if still no connector, find first connected connector and try it */
 	if (!drm->primary) {
+		ALOGI("Try to find the first connected connector");
 
 		for (i = 0; i < drm->resources->count_connectors; i++) {
 			drmModeConnectorPtr connector;
@@ -1300,12 +1301,11 @@ int gralloc_drm_init_kms(struct gralloc_drm_t *drm)
 			connector = drmModeGetConnector(drm->fd,
 					drm->resources->connectors[i]);
 			if (connector) {
-				if (connector->connection == DRM_MODE_CONNECTED) {
-					if (drm_kms_init_with_new_connector(drm, connector))
-						break;
-				}
-
+				bool found = (connector->connection == DRM_MODE_CONNECTED)
+						&& !!drm_kms_init_with_new_connector(drm, connector);
 				drmModeFreeConnector(connector);
+				if (found)
+					break;
 			}
 		}
 		if (i == drm->resources->count_connectors) {
