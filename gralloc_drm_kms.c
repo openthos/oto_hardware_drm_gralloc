@@ -1189,7 +1189,7 @@ static int init_connectors(struct gralloc_drm_t *drm)
  */
 static void *extcon_observer(void *data)
 {
-	static char uevent_desc[4096];
+	char uevent_desc[2048];
 	drmModeConnectorPtr hdmi;
 	struct gralloc_drm_t *drm =
 		(struct gralloc_drm_t *) data;
