@@ -47,6 +47,7 @@
 #define NV_FERMI    0xc0
 #define NV_KEPLER   0xe0
 #define NV_MAXWELL  0x110
+#define NV_PASCAL   0x130
 
 #define NV50_TILE_HEIGHT(m) (4 << ((m) >> 4))
 #define NVC0_TILE_HEIGHT(m) (8 << ((m) >> 4))
@@ -55,7 +56,7 @@
 // Comment out the following to switch between the "sw_indicator disables all
 // tiling" and "sw_indicator zeroes the tile|surf_flags (object tiling?)".
 // Does the latter even make sense ... ? Going through the kernel on the
-// topic is slightly annoying :\
+// topic is slightly annoying :/
 
 #undef SW_INDICATOR_FULLY_DISABLES_TILING
 
@@ -368,6 +369,9 @@ static int nouveau_init(struct nouveau_info *info)
 	case 0x110:
 	case 0x120:
 		info->arch = NV_MAXWELL;
+		break;
+	case 0x130:
+		info->arch = NV_PASCAL;
 		break;
 	default:
 		ALOGE("unknown nouveau chipset 0x%x", info->dev->chipset);

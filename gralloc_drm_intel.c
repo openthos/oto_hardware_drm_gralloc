@@ -603,15 +603,6 @@ static void intel_init_kms_features(struct gralloc_drm_drv_t *drv,
 	struct drm_i915_getparam gp;
 	int pageflipping, id, has_blt;
 
-	switch (drm->primary->fb_format) {
-	case HAL_PIXEL_FORMAT_BGRA_8888:
-	case HAL_PIXEL_FORMAT_RGB_565:
-		break;
-	default:
-		drm->primary->fb_format = HAL_PIXEL_FORMAT_BGRA_8888;
-		break;
-	}
-
 	drm->mode_quirk_vmwgfx = 0;
 	/* why? */
 	drm->mode_sync_flip = 1;
@@ -671,6 +662,19 @@ static void intel_init_kms_features(struct gralloc_drm_drv_t *drv,
 	}
 	else {
 		drm->swap_interval = 0;
+	}
+
+	switch (drm->primary->fb_format) {
+	case HAL_PIXEL_FORMAT_BGRA_8888:
+	case HAL_PIXEL_FORMAT_RGB_565:
+		break;
+	case HAL_PIXEL_FORMAT_RGBA_8888:
+		if (drm->swap_mode == DRM_SWAP_FLIP)
+			break;
+		/* fall through */
+	default:
+		drm->primary->fb_format = HAL_PIXEL_FORMAT_BGRA_8888;
+		break;
 	}
 }
 

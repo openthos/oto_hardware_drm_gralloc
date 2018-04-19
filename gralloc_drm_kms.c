@@ -28,6 +28,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <poll.h>
@@ -111,7 +112,8 @@ static unsigned int drm_format_from_hal(int hal_format)
 		case HAL_PIXEL_FORMAT_RGBX_8888:
 			return DRM_FORMAT_XBGR8888;
 		case HAL_PIXEL_FORMAT_RGBA_8888:
-			return DRM_FORMAT_RGBA8888;
+//			return DRM_FORMAT_ABGR8888;
+			return DRM_FORMAT_XBGR8888;
 		case HAL_PIXEL_FORMAT_RGB_565:
 			return DRM_FORMAT_RGB565;
 		case HAL_PIXEL_FORMAT_YV12:
@@ -1046,7 +1048,7 @@ static int drm_kms_init_with_connector(struct gralloc_drm_t *drm,
 		break;
 	case 4:
 	default:
-		output->fb_format = HAL_PIXEL_FORMAT_BGRA_8888;
+		output->fb_format = HAL_PIXEL_FORMAT_RGBA_8888;
 		break;
 	}
 
@@ -1128,6 +1130,10 @@ static int init_external_output(struct gralloc_drm_t *drm,
 {
 	struct gralloc_drm_output *output;
 	output = drm_kms_init_with_new_connector(drm, connector);
+	if (output == NULL || !output->active) {
+		ALOGW("connector 0x%x output is null or not active", connector->connector_id);
+		return -EINVAL;
+	}
 
 	ALOGD("%s, allocate private buffer for hdmi [%dx%d]",
 		__func__, output->mode.hdisplay, output->mode.vdisplay);
@@ -1190,7 +1196,7 @@ static int init_connectors(struct gralloc_drm_t *drm)
  */
 static void *extcon_observer(void *data)
 {
-	static char uevent_desc[4096];
+	char uevent_desc[2048];
 	drmModeConnectorPtr hdmi;
 	struct gralloc_drm_t *drm =
 		(struct gralloc_drm_t *) data;
@@ -1246,9 +1252,6 @@ static void *extcon_observer(void *data)
  */
 int gralloc_drm_init_kms(struct gralloc_drm_t *drm)
 {
-	drmModeConnectorPtr lvds;
-	int i, ret;
-
 	if (drm->resources)
 		return 0;
 
@@ -1286,18 +1289,27 @@ int gralloc_drm_init_kms(struct gralloc_drm_t *drm)
 	drm->output_capacity = drm->resources->count_connectors;
 	drm->output_count = 0;
 
-	drm->outputs = malloc(sizeof(*drm->outputs) * drm->output_capacity);
-	memset(drm->outputs, 0, sizeof(*drm->outputs) * drm->output_capacity);
+	drm->outputs = calloc(sizeof(*drm->outputs), drm->output_capacity);
 
 	/* find the crtc/connector/mode to use */
-	lvds = fetch_connector(drm, DRM_MODE_CONNECTOR_LVDS);
-	if (lvds) {
-		drm_kms_init_with_new_connector(drm, lvds);
-		drmModeFreeConnector(lvds);
+	uint32_t internal_connectors[] = {
+		DRM_MODE_CONNECTOR_LVDS,
+		DRM_MODE_CONNECTOR_DSI,
+	};
+	for (size_t i = 0; i < sizeof(internal_connectors) / sizeof(uint32_t); i++) {
+		drmModeConnectorPtr connector;
+		connector = fetch_connector(drm, internal_connectors[i]);
+		if (connector) {
+			drm_kms_init_with_new_connector(drm, connector);
+			drmModeFreeConnector(connector);
+			break;
+		}
 	}
 
 	/* if still no connector, find first connected connector and try it */
 	if (!drm->primary) {
+		int i;
+		ALOGI("Try to find the first connected connector");
 
 		for (i = 0; i < drm->resources->count_connectors; i++) {
 			drmModeConnectorPtr connector;
@@ -1305,12 +1317,11 @@ int gralloc_drm_init_kms(struct gralloc_drm_t *drm)
 			connector = drmModeGetConnector(drm->fd,
 					drm->resources->connectors[i]);
 			if (connector) {
-				if (connector->connection == DRM_MODE_CONNECTED) {
-					if (drm_kms_init_with_new_connector(drm, connector))
-						break;
-				}
-
+				bool found = (connector->connection == DRM_MODE_CONNECTED)
+						&& !!drm_kms_init_with_new_connector(drm, connector);
 				drmModeFreeConnector(connector);
+				if (found)
+					break;
 			}
 		}
 		if (i == drm->resources->count_connectors) {

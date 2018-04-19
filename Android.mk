@@ -29,7 +29,6 @@ radeon_drivers := r300g r600g radeonsi
 nouveau_drivers := nouveau
 
 valid_drivers := \
-	prebuilt \
 	$(freedreno_drivers) \
 	$(intel_drivers) \
 	$(radeon_drivers) \
@@ -44,35 +43,11 @@ ifneq ($(strip $(DRM_GPU_DRIVERS)),)
 
 LOCAL_PATH := $(call my-dir)
 
-
-# Use the PREBUILT libraries
-ifeq ($(strip $(DRM_GPU_DRIVERS)),prebuilt)
-
-include $(CLEAR_VARS)
-LOCAL_MODULE := libgralloc_drm
-LOCAL_MODULE_TAGS := optional
-LOCAL_SRC_FILES := ../../$(BOARD_GPU_DRIVER_BINARY)
-LOCAL_MODULE_CLASS := SHARED_LIBRARIES
-LOCAL_MODULE_SUFFIX := $(TARGET_SHLIB_SUFFIX)
-include $(BUILD_PREBUILT)
-
-include $(CLEAR_VARS)
-LOCAL_MODULE := gralloc.$(TARGET_PRODUCT)
-LOCAL_MODULE_TAGS := optional
-LOCAL_MODULE_RELATIVE_PATH := hw
-LOCAL_SRC_FILES := ../../$(BOARD_GPU_DRIVER_BINARY)
-LOCAL_MODULE_CLASS := SHARED_LIBRARIES
-LOCAL_MODULE_SUFFIX := $(TARGET_SHLIB_SUFFIX)
-include $(BUILD_PREBUILT)
-
-# Use the sources
-else
-
 include $(CLEAR_VARS)
 LOCAL_MODULE := libgralloc_drm
 LOCAL_MODULE_TAGS := optional
 
-LOCAL_CFLAGS := -std=c99
+LOCAL_CFLAGS := -std=c11 -Wno-unused-parameter
 
 LOCAL_SRC_FILES := \
 	gralloc_drm.c \
@@ -143,7 +118,7 @@ LOCAL_SHARED_LIBRARIES += \
 LOCAL_MODULE := gralloc.drm
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_RELATIVE_PATH := hw
+LOCAL_CFLAGS := -std=c11 -Wno-unused-parameter
 include $(BUILD_SHARED_LIBRARY)
 
-endif # DRM_GPU_DRIVERS=prebuilt
 endif # DRM_GPU_DRIVERS
